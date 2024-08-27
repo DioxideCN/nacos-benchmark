@@ -1,0 +1,39 @@
+[package]
+name = "nacos-benchmark"
+version = "0.1.0"
+edition = "2021"
+authors = ["秋舫0v0 <dioxide.cn@gmail.com>"]
+homepage = "https://github.com/DioxideCN/nacos-benchmark"
+repository = "https://github.com/DioxideCN/nacos-benchmark"
+readme = "README.md"
+keywords = ["nacos", "benchmark"]
+exclude = [
+    ".github/*",
+    "book/*",
+]
+
+[workspace]
+
+members = [
+    ".",
+]
+
+[dependencies]
+goose = "^0.17"
+tokio = "1"
+anyhow="1"
+actix = "0.13"
+ratelimiter-rs = "0.1"
+log = "0"
+env_logger = "0.11.5"
+lazy_static = "1.4"
+rand = "0.8"
+nacos_rust_client = "0.3.0"
+
+[dependencies.uuid]
+version = "1.2.1"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
