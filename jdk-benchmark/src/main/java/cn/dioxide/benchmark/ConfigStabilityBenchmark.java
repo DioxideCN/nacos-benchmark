@@ -35,6 +35,8 @@ public class ConfigStabilityBenchmark {
     
     private static final int ACTION_PER_SEC = 10; // s
     
+    private static final int TOTAL_SEC = 60; // s
+    
     private static final List<RpcClient> CLIENTS = RpcClientBuilder.createBatch(CLIENT_CNT);
     
     private final AtomicInteger successCount = new AtomicInteger();
@@ -44,11 +46,11 @@ public class ConfigStabilityBenchmark {
     private final AtomicInteger noResponseCount = new AtomicInteger();
     
     @Benchmark
+    @Fork(1)
+    @Warmup(iterations = 0)
     @BenchmarkMode(Mode.SingleShotTime)
     @OutputTimeUnit(TimeUnit.SECONDS)
-    @Warmup(iterations = 0)
-    @Measurement(iterations = ACTION_PER_SEC)
-    @Fork(1)
+    @Measurement(iterations = TOTAL_SEC)
     public void benchmark(Blackhole blackhole) {
         for (RpcClient client : CLIENTS) {
             for (int i = 0; i < ACTION_PER_SEC; i++) {

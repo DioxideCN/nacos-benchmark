@@ -19,7 +19,7 @@ public class BenchmarkStarter {
     
     private static void benchmark1() {
         final int clientCnt = 10;
-        final int preClientCnt = 100;
+        final int preClientCnt = 10;
         new ConfigTimeConsumingBenchmark(clientCnt, preClientCnt).benchmark();
     }
     
