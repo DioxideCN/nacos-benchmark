@@ -4,6 +4,8 @@ import com.alibaba.nacos.api.common.Constants;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.config.ConfigType;
 import com.alibaba.nacos.api.config.remote.request.ConfigPublishRequest;
+import com.alibaba.nacos.api.config.remote.request.ConfigRemoveRequest;
+import com.alibaba.nacos.api.config.remote.response.ConfigRemoveResponse;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.remote.request.Request;
 import com.alibaba.nacos.api.remote.response.Response;
@@ -15,13 +17,21 @@ import com.alibaba.nacos.client.config.impl.ConfigTransportClient;
 import com.alibaba.nacos.client.security.SecurityProxy;
 import com.alibaba.nacos.client.utils.ParamUtil;
 import com.alibaba.nacos.common.remote.client.RpcClient;
+import com.alibaba.nacos.common.utils.ConcurrentHashSet;
 import com.alibaba.nacos.common.utils.MD5Utils;
 import com.alibaba.nacos.plugin.auth.api.RequestResource;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Dioxide.CN
@@ -39,6 +49,8 @@ public class ConfigHelper {
     static ClientWorker.ConfigRpcTransportClient agent;
     
     static ConfigFilterChainManager configFilterChain;
+    
+    static List<RpcClient> deletingClient;
     
     static {
         try {
@@ -64,6 +76,12 @@ public class ConfigHelper {
             Field encodeField = ConfigTransportClient.class.getDeclaredField("encode");
             encodeField.setAccessible(true);
             ConfigHelper.encode = (String) encodeField.get(ConfigHelper.agent);
+            
+            ArrayList<RpcClient> deletingClient = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                deletingClient.add(RpcClientBuilder.createOne(STR."deleting_client_\{i}"));
+            }
+            ConfigHelper.deletingClient = deletingClient;
         } catch (Exception ex) {
             throw new Error(ex);
         }
@@ -71,6 +89,45 @@ public class ConfigHelper {
     
     public static boolean publishConfig(RpcClient client, final String dataID) throws Exception {
         return ConfigHelper.requestProxy(client, buildPublishRequest(dataID), 3000L).isSuccess();
+    }
+    
+    public static void batchDeleteConfig(final ConcurrentHashSet<String> dataIDs) {
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            final int numClients = deletingClient.size();
+            final int step = dataIDs.size() / 5;
+            final List<String> dataIDList = new ArrayList<>(dataIDs);
+            for (int cnt = 0; cnt < numClients; cnt++) {
+                int start = cnt * step;
+                int end = (cnt == numClients - 1) ? dataIDList.size() : (cnt + 1) * step;
+                final List<String> subList = dataIDList.subList(start, end);
+                final RpcClient client = deletingClient.get(cnt);
+                executor.submit(() -> {
+                    try {
+                        for (String dataID : subList) {
+                            requestProxy(client, buildRemoveRequest(dataID), 3000L);
+                        }
+                    } catch (NacosException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                    if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                        System.err.println("Executor did not terminate in the allotted time.");
+                    }
+                }
+            } catch (InterruptedException ex) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    private static ConfigRemoveRequest buildRemoveRequest(final String dataID) {
+        return new ConfigRemoveRequest(dataID, ClientConfig.DEFAULT_GROUP, namespace, null);
     }
     
     private static ConfigPublishRequest buildPublishRequest(final String dataID) throws NacosException {
@@ -118,9 +175,20 @@ public class ConfigHelper {
     }
     
     private static Map<String, String> getSecurityHeaders(Request request) {
-        final String tenant = ((ConfigPublishRequest) request).getTenant();
-        final String group = ((ConfigPublishRequest) request).getGroup();
-        final String dataId = ((ConfigPublishRequest) request).getDataId();
+        final String tenant;
+        final String group;
+        final String dataId;
+        if (request instanceof ConfigPublishRequest publishRequest) {
+            tenant = publishRequest.getTenant();
+            group = publishRequest.getGroup();
+            dataId = publishRequest.getDataId();
+        } else if (request instanceof ConfigRemoveRequest removeRequest) {
+            tenant = removeRequest.getTenant();
+            group = removeRequest.getGroup();
+            dataId = removeRequest.getDataId();
+        } else {
+            throw new Error("Unknown request type!");
+        }
         final RequestResource resource = RequestResource
                 .configBuilder()
                 .setNamespace(tenant)

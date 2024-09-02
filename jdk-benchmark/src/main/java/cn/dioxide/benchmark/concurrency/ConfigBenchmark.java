@@ -1,31 +1,16 @@
-package cn.dioxide.benchmark;
+package cn.dioxide.benchmark.concurrency;
 
 import cn.dioxide.infra.ClientConfig;
 import cn.dioxide.infra.ConfigHelper;
 import cn.dioxide.infra.RpcClientBuilder;
-import com.alibaba.nacos.api.common.Constants;
 import com.alibaba.nacos.api.config.ConfigService;
-import com.alibaba.nacos.api.config.ConfigType;
-import com.alibaba.nacos.api.config.remote.request.ConfigPublishRequest;
 import com.alibaba.nacos.api.exception.NacosException;
-import com.alibaba.nacos.api.remote.request.Request;
-import com.alibaba.nacos.api.remote.response.Response;
-import com.alibaba.nacos.client.config.NacosConfigService;
-import com.alibaba.nacos.client.config.impl.ClientWorker;
-import com.alibaba.nacos.client.config.impl.ConfigTransportClient;
-import com.alibaba.nacos.client.security.SecurityProxy;
-import com.alibaba.nacos.client.utils.ParamUtil;
 import com.alibaba.nacos.common.remote.client.RpcClient;
-import com.alibaba.nacos.common.utils.MD5Utils;
-import com.alibaba.nacos.plugin.auth.api.RequestResource;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -40,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @date 2024/8/28
  * @since 1.0
  */
-public class ConfigTimeConsumingBenchmark {
+public class ConfigBenchmark {
     
     final List<RpcClient> clients;
     
@@ -60,7 +45,7 @@ public class ConfigTimeConsumingBenchmark {
     
     private volatile boolean running = true;
     
-    public ConfigTimeConsumingBenchmark(final int clientCnt, final int preClientCnt) {
+    public ConfigBenchmark(final int clientCnt, final int preClientCnt) {
         this.preClientCnt = preClientCnt;
         this.total = clientCnt * preClientCnt;
         // build clients

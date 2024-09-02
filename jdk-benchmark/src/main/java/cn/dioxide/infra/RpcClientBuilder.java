@@ -56,7 +56,6 @@ public class RpcClientBuilder {
             try {
                 client = RpcClientBuilder.createOne(String.valueOf(i));
             } catch (NacosException e) {
-                System.out.println("ERROR OCCURRED!");
                 throw new RuntimeException(e);
             }
             if (!client.isWaitInitiated()) {

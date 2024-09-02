@@ -1,7 +1,6 @@
 package cn.dioxide;
 
-import cn.dioxide.benchmark.ConfigStabilityBenchmark;
-import cn.dioxide.benchmark.ConfigTimeConsumingBenchmark;
+import cn.dioxide.benchmark.concurrency.ConfigBenchmark;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -18,14 +17,14 @@ public class BenchmarkStarter {
     }
     
     private static void benchmark1() {
-        final int clientCnt = 10;
-        final int preClientCnt = 10;
-        new ConfigTimeConsumingBenchmark(clientCnt, preClientCnt).benchmark();
+        final int clientCnt = 1;
+        final int preClientCnt = 1;
+        new ConfigBenchmark(clientCnt, preClientCnt).benchmark();
     }
     
     private static void benchmark2() throws Exception {
         Options options = new OptionsBuilder()
-                .include(ConfigStabilityBenchmark.class.getSimpleName())
+                .include(cn.dioxide.benchmark.stability.ConfigBenchmark.class.getSimpleName())
                 .build();
         new Runner(options).run();
     }
